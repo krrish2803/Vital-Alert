@@ -1,4 +1,4 @@
-const API = '/api/v1';
+const API = (typeof API_URL !== 'undefined') ? API_URL : '/api/v1';
 
 function getToken() {
   return localStorage.getItem('token');

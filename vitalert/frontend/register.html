@@ -99,6 +99,7 @@
       </div>
     </div>
   </div>
+  <script src="assets/config.js"></script>
   <script>
     let registeredEmail = '';
 
@@ -124,7 +125,7 @@
       btn.textContent = 'Creating account...';
       
       try {
-        const res = await fetch('/api/v1/auth/register', {
+        const res = await fetch(API_URL + '/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email, password, role: 'owner', clinic_name: clinic || null })
@@ -154,7 +155,7 @@
     async function selectRole(role) {
       if (role === 'doctor') {
         try {
-          await fetch('/api/v1/auth/role', {
+          await fetch(API_URL + '/auth/role', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
             body: JSON.stringify({ role: 'doctor' })
@@ -164,7 +165,7 @@
         window.location.href = 'doctor-setup.html';
       } else if (role === 'patient') {
         try {
-          const res = await fetch('/api/v1/auth/role', {
+          const res = await fetch(API_URL + '/auth/role', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
             body: JSON.stringify({ role: 'patient' })
@@ -176,7 +177,7 @@
         window.location.href = 'patient.html';
       } else if (role === 'staff') {
         try {
-          await fetch('/api/v1/auth/role', {
+          await fetch(API_URL + '/auth/role', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
             body: JSON.stringify({ role: 'staff' })
