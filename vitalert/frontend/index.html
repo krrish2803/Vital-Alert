@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalAlert — Login</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .login-subtitle { color: var(--text-secondary); font-size: 14px; text-align: center; margin-bottom: 28px; }
+    .login-footer { text-align: center; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <h1>VitalAlert</h1>
+        <p>AI-Powered Diagnostic Alert System</p>
+      </div>
+      <p class="login-subtitle">Sign in to your account</p>
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" type="email" id="email" placeholder="owner@ghoshdiagnostics.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="Enter your password" required>
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="loginBtn">
+          Sign In
+        </button>
+      </form>
+      <div class="login-footer">
+        Don't have an account? <a href="register.html" style="color:var(--accent);text-decoration:none;font-weight:600;">Create Account</a>
+        <br><br>
+        &copy; 2026 VitalAlert. All rights reserved.
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      const error = document.getElementById('loginError');
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      error.style.display = 'none';
+      try {
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          error.textContent = data.detail || 'Login failed';
+          error.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
+          return;
+        }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', data.role);
+        if (data.role === 'patient') window.location.href = 'patient.html';
+        else if (data.role === 'owner') window.location.href = 'index.html';
+        else if (data.role === 'staff') window.location.href = 'staff.html';
+        else if (data.role === 'doctor') window.location.href = 'portal.html';
+        else window.location.href = 'index.html';
+      } catch (err) {
+        error.textContent = 'Connection error. Is the server running?';
+        error.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

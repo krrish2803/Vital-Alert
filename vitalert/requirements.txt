@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+motor
+pymongo
+openai
+twilio
+python-dotenv
+pydantic
+httpx
+aiofiles
+pillow
+pymupdf
+python-multipart
+bcrypt
+pyjwt

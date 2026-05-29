@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalAlert — Register</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .register-subtitle { color: var(--text-secondary); font-size: 14px; text-align: center; margin-bottom: 28px; }
+    .register-footer { text-align: center; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .register-footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .register-footer a:hover { text-decoration: underline; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 480px) { .two-col { grid-template-columns: 1fr; } }
+    .role-selector { display: none; }
+    .role-selector.active { display: block; }
+    .register-form { display: block; }
+    .register-form.hidden { display: none; }
+    .role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+    @media (max-width: 480px) { .role-cards { grid-template-columns: 1fr; } }
+    .role-card {
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: var(--radius); padding: 32px 20px; text-align: center;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .role-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .role-card .icon { font-size: 48px; margin-bottom: 12px; }
+    .role-card h3 { font-size: 18px; margin-bottom: 6px; }
+    .role-card p { font-size: 13px; color: var(--text-secondary); }
+    .skip-role { margin-top: 20px; text-align: center; }
+    .skip-role a { color: var(--text-muted); font-size: 13px; cursor: pointer; text-decoration: none; }
+    .skip-role a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <h1>VitalAlert</h1>
+        <p>AI-Powered Diagnostic Alert System</p>
+      </div>
+
+      <!-- Registration Form -->
+      <div id="registerFormView">
+        <p class="register-subtitle">Create your account</p>
+        <form id="registerForm">
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label" for="regName">Full Name</label>
+              <input class="form-input" type="text" id="regName" placeholder="Your Name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="regClinic">Clinic / Hospital Name</label>
+              <input class="form-input" type="text" id="regClinic" placeholder="Your Clinic">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email</label>
+            <input class="form-input" type="email" id="regEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password</label>
+            <input class="form-input" type="password" id="regPassword" placeholder="Min 6 characters" required minlength="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regConfirm">Confirm Password</label>
+            <input class="form-input" type="password" id="regConfirm" placeholder="Repeat password" required minlength="6">
+          </div>
+          <div class="login-error" id="registerError"></div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="registerBtn">
+            Create Account
+          </button>
+        </form>
+        <div class="register-footer">
+          Already have an account? <a href="index.html">Sign In</a>
+          <br><br>
+          &copy; 2026 VitalAlert. All rights reserved.
+        </div>
+      </div>
+
+      <!-- Role Selection -->
+      <div id="roleSelectorView" style="display:none">
+        <p class="register-subtitle">Account created! What best describes you?</p>
+        <div class="role-cards">
+          <div class="role-card" onclick="selectRole('doctor')">
+            <div class="icon">&#128137;</div>
+            <h3>I'm a Doctor</h3>
+            <p>Receive patient alerts, manage your practice</p>
+          </div>
+          <div class="role-card" onclick="selectRole('patient')">
+            <div class="icon">&#127973;</div>
+            <h3>I'm a Patient</h3>
+            <p>Upload reports, get results, connect with your doctor</p>
+          </div>
+        </div>
+        <div class="skip-role">
+          <a onclick="skipRole()">Skip — I'm an owner/staff (go to dashboard)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let registeredEmail = '';
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const confirm = document.getElementById('regConfirm').value;
+      const clinic = document.getElementById('regClinic').value;
+      const btn = document.getElementById('registerBtn');
+      const error = document.getElementById('registerError');
+      
+      error.style.display = 'none';
+      
+      if (password !== confirm) {
+        error.textContent = 'Passwords do not match';
+        error.style.display = 'block';
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+      
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: 'owner', clinic_name: clinic || null })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          error.textContent = data.detail || 'Registration failed';
+          error.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Create Account';
+          return;
+        }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', data.role);
+        registeredEmail = email;
+        document.getElementById('registerFormView').style.display = 'none';
+        document.getElementById('roleSelectorView').style.display = 'block';
+      } catch (err) {
+        error.textContent = 'Connection error. Is the server running?';
+        error.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    async function selectRole(role) {
+      if (role === 'doctor') {
+        try {
+          await fetch('/api/v1/auth/role', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+            body: JSON.stringify({ role: 'doctor' })
+          });
+        } catch(e) {}
+        localStorage.setItem('role', 'doctor');
+        window.location.href = 'doctor-setup.html';
+      } else if (role === 'patient') {
+        try {
+          const res = await fetch('/api/v1/auth/role', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+            body: JSON.stringify({ role: 'patient' })
+          });
+          const data = await res.json();
+          if (data.token) localStorage.setItem('token', data.token);
+        } catch(e) {}
+        localStorage.setItem('role', 'patient');
+        window.location.href = 'patient.html';
+      } else if (role === 'staff') {
+        try {
+          await fetch('/api/v1/auth/role', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+            body: JSON.stringify({ role: 'staff' })
+          });
+        } catch(e) {}
+        localStorage.setItem('role', 'staff');
+        window.location.href = 'staff.html';
+      }
+    }
+
+    function getToken() { return localStorage.getItem('token'); }
+
+    function skipRole() {
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

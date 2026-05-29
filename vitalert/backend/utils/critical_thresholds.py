@@ -1,0 +1,16 @@
+CRITICAL_THRESHOLDS = {
+    "haemoglobin": {"low": 7.0, "high": 20.0, "unit": "g/dL"},
+    "hemoglobin": {"low": 7.0, "high": 20.0, "unit": "g/dL"},
+    "blood_sugar_fasting": {"low": 50.0, "high": 500.0, "unit": "mg/dL"},
+    "blood_sugar_random": {"low": 50.0, "high": 600.0, "unit": "mg/dL"},
+    "potassium": {"low": 2.5, "high": 6.5, "unit": "mEq/L"},
+    "sodium": {"low": 120.0, "high": 160.0, "unit": "mEq/L"},
+    "creatinine": {"low": 0.0, "high": 10.0, "unit": "mg/dL"},
+    "platelet_count": {"low": 50000, "high": 1000000, "unit": "/µL"},
+    "wbc_count": {"low": 2000, "high": 30000, "unit": "/µL"},
+    "oxygen_saturation": {"low": 90.0, "high": 100.0, "unit": "%"},
+    "systolic_bp": {"low": 80.0, "high": 180.0, "unit": "mmHg"},
+    "heart_rate": {"low": 40.0, "high": 150.0, "unit": "bpm"},
+    "bilirubin_total": {"low": 0.0, "high": 10.0, "unit": "mg/dL"},
+    "hba1c": {"low": 0.0, "high": 10.0, "unit": "%"},
+}

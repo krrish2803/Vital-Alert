@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalAlert — Dashboard</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .quick-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .chart-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .chart-bar-label { width: 100px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
+    .chart-bar-track { flex: 1; height: 24px; background: var(--bg-secondary); border-radius: 6px; overflow: hidden; }
+    .chart-bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width 0.5s ease; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; color: var(--bg-primary); }
+    .chart-bar-value { width: 40px; font-size: 13px; font-weight: 600; color: var(--text-primary); text-align: right; }
+    .line-chart { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding-top: 20px; }
+    .line-chart-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .line-chart-fill { width: 32px; border-radius: 6px 6px 0 0; background: var(--accent); transition: height 0.5s ease; min-height: 4px; }
+    .line-chart-label { font-size: 12px; color: var(--text-muted); }
+    .live-feed-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .live-feed-item:last-child { border-bottom: none; }
+    .live-feed-time { font-size: 12px; color: var(--text-muted); width: 60px; flex-shrink: 0; }
+    .live-feed-info { flex: 1; }
+    .live-feed-name { font-size: 14px; font-weight: 600; }
+    .live-feed-detail { font-size: 12px; color: var(--text-secondary); }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); width: 90%; max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 28px; }
+    .modal-box h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .modal-close { float: right; background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; }
+    .settings-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row .label { color: var(--text-secondary); }
+    .settings-row .value { font-weight: 600; }
+    .patient-table { width: 100%; border-collapse: collapse; }
+    .patient-table th { text-align: left; padding: 10px 8px; font-size: 12px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .patient-table td { padding: 10px 8px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot.ok { background: var(--success); }
+    .status-dot.err { background: var(--danger); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="header-left">
+        <div class="header-logo">VitalAlert</div>
+        <span style="color:var(--text-secondary);font-size:14px" id="greeting"></span>
+      </div>
+      <div class="header-right">
+        <div class="refresh-indicator"><span class="refresh-dot"></span> Auto-refreshing</div>
+        <span class="header-user" id="headerUser"></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container" style="padding-top:24px">
+    <div class="page-header">
+      <h1 class="page-title" id="dashTitle">Dashboard</h1>
+      <p class="page-subtitle" id="dashSubtitle"></p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-card-icon">&#128203;</div>
+        <div class="stat-card-value" id="statReports">--</div>
+        <div class="stat-card-label">Reports Today</div>
+        <div class="stat-card-change" id="statReportsChange"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">&#128683;</div>
+        <div class="stat-card-value" id="statCritical">--</div>
+        <div class="stat-card-label">Critical Alerts</div>
+        <div class="stat-card-change" id="statCriticalChange"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">&#9989;</div>
+        <div class="stat-card-value" id="statResolved">--</div>
+        <div class="stat-card-label">Resolved Alerts</div>
+        <div class="stat-card-change" id="statResolvedChange"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">&#9203;</div>
+        <div class="stat-card-value" id="statPending">--</div>
+        <div class="stat-card-label">Pending Alerts</div>
+        <div class="stat-card-change" id="statPendingChange">Action needed</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="dashboard-grid">
+      <div class="card dashboard-full">
+        <div class="card-header"><h3 class="card-title">Reports by Type (This Week)</h3></div>
+        <div id="reportsByTypeChart"></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Alerts This Week</h3></div>
+        <div class="line-chart" id="alertsLineChart"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Top Referring Doctors</h3></div>
+        <div id="topDoctors"></div>
+      </div>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header">
+        <h3 class="card-title">Recent Critical Alerts</h3>
+        <span style="font-size:12px;color:var(--text-muted)">Live feed</span>
+      </div>
+      <div id="recentAlerts"></div>
+    </div>
+
+    <!-- Recent Patients -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header">
+        <h3 class="card-title">Recent Patients</h3>
+        <button class="btn btn-outline btn-sm" onclick="openPatientsModal()">View All Patients</button>
+      </div>
+      <div id="recentPatients"></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Quick Actions</h3></div>
+      <div class="quick-actions">
+        <button class="btn btn-primary" onclick="window.location.href='staff.html'">+ Add Doctor</button>
+        <button class="btn btn-outline" onclick="openAddStaffModal()">+ Add Staff</button>
+        <button class="btn btn-outline" onclick="downloadDashboardReport()">&#128202; Download Report</button>
+        <button class="btn btn-outline" onclick="openSettingsModal()">&#9881; Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modals ===== -->
+
+  <!-- Add Staff Modal -->
+  <div class="modal-overlay" id="addStaffModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('addStaffModal')">&times;</button>
+      <h2>➕ Add Staff Member</h2>
+      <form id="addStaffForm">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="staffName" placeholder="e.g. Staff Member" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" id="staffEmail" placeholder="staff@clinic.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="staffPassword" placeholder="Min 6 characters" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clinic Name</label>
+          <input class="form-input" id="staffClinic" placeholder="Your clinic name">
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" id="addStaffBtn">Register Staff</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal('addStaffModal')">Cancel</button>
+        </div>
+      </form>
+      <div id="addStaffResult" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Add Doctor Modal -->
+  <div class="modal-overlay" id="addDoctorModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('addDoctorModal')">&times;</button>
+      <h2>👨‍⚕️ Add Doctor</h2>
+      <form id="addDoctorForm">
+        <div class="two-col">
+          <div class="form-group">
+            <label class="form-label">Doctor Name</label>
+            <input class="form-input" id="docName" placeholder="Dr. Name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Specialization</label>
+            <input class="form-input" id="docSpec" placeholder="Cardiology" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input class="form-input" id="docPhone" placeholder="+919876543210" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp Number</label>
+          <input class="form-input" id="docWhatsApp" placeholder="+919876543210" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Backup Contact (optional)</label>
+          <input class="form-input" id="docBackup" placeholder="+919876543211">
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary" id="addDoctorBtn">Add Doctor</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal('addDoctorModal')">Cancel</button>
+        </div>
+      </form>
+      <div id="addDoctorResult" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+      <h2>⚙️ System Settings</h2>
+      <div id="settingsContent">
+        <p style="color:var(--text-muted)">Loading...</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('settingsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Patients Modal -->
+  <div class="modal-overlay" id="patientsModal">
+    <div class="modal-box" style="max-width:700px">
+      <button class="modal-close" onclick="closeModal('patientsModal')">&times;</button>
+      <h2>📋 All Patients</h2>
+      <div class="form-group" style="margin-bottom:16px">
+        <input class="form-input" id="patientsSearch" placeholder="Search patients..." oninput="filterPatientsTable()">
+      </div>
+      <div id="patientsContent" style="max-height:400px;overflow-y:auto">
+        <p style="color:var(--text-muted)">Loading...</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('patientsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/dashboard.js"></script>
+</body>
+</html>

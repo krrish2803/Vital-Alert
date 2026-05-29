@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalAlert — Doctor Portal</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .portal-alert-card { border-left: 4px solid var(--danger); margin-bottom: 24px; }
+    .portal-alert-card.acknowledged { border-left-color: var(--success); }
+    .portal-section { margin-bottom: 20px; }
+    .portal-section h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
+    .portal-patient { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .portal-info-item label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 2px; }
+    .portal-info-item span { font-size: 14px; font-weight: 500; }
+    .portal-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+    .status-banner { padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .message-input-area { display: none; margin-top: 12px; }
+    .critical-value-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .critical-value-item:last-child { border-bottom: none; }
+    @media (max-width: 768px) { .portal-patient { grid-template-columns: 1fr; } }
+    .alert-list-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+    .alert-list-item:hover { border-color: var(--accent); }
+    .alert-list-item .alert-icon { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255,77,77,0.1); border-radius: 10px; flex-shrink: 0; }
+    .alert-list-item .alert-icon.acknowledged { background: rgba(0,200,81,0.1); }
+    .alert-list-info { flex: 1; min-width: 0; }
+    .alert-list-name { font-size: 14px; font-weight: 600; }
+    .alert-list-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .alert-list-status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+    .alert-list-status.sent { background: rgba(255,179,71,0.15); color: var(--warning); }
+    .alert-list-status.acknowledged { background: rgba(0,200,81,0.15); color: var(--success); }
+    .alert-list-status.escalated { background: rgba(255,77,77,0.15); color: var(--danger); }
+    .back-btn { cursor: pointer; color: var(--accent); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+    .back-btn:hover { text-decoration: underline; }
+    .page-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .stat-badge { font-size: 13px; color: var(--text-muted); background: var(--surface); padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="header-left">
+        <div class="header-logo">VitalAlert</div>
+        <span style="color:var(--text-secondary);font-size:14px">Doctor Portal</span>
+      </div>
+      <div class="header-right">
+        <span class="header-user" id="headerUser"></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container" style="padding-top:24px">
+
+    <!-- Loading -->
+    <div id="loadingView" class="loading-overlay">
+      <div class="spinner" style="margin-bottom:16px"></div>
+      <p style="color:var(--text-secondary)">Loading...</p>
+    </div>
+
+    <!-- Alert List -->
+    <div id="listView">
+      <div class="page-header-bar">
+        <h1 style="font-size:22px">Patient Alerts</h1>
+        <span class="stat-badge" id="alertCount">0 alerts</span>
+      </div>
+      <div id="alertListContainer">
+        <div style="text-align:center;padding:60px;color:var(--text-muted)">
+          <p>No alerts yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Setup -->
+    <div id="noSetupView" style="display:none">
+      <div class="card" style="text-align:center;padding:60px;max-width:500px;margin:40px auto">
+        <div style="font-size:64px;margin-bottom:16px">&#128137;</div>
+        <h2 style="margin-bottom:8px">Doctor Profile Not Found</h2>
+        <p style="color:var(--text-secondary);margin-bottom:20px">Please complete your doctor setup first.</p>
+        <a href="doctor-setup.html" class="btn btn-primary">Go to Setup</a>
+      </div>
+    </div>
+
+    <!-- No Alert Selected (fallback for direct link without alert_id) -->
+    <div id="noAlertView" style="display:none">
+      <div class="card" style="text-align:center;padding:60px">
+        <div style="font-size:64px;margin-bottom:16px">&#128220;</div>
+        <h2 style="margin-bottom:8px">No Alert Selected</h2>
+        <p style="color:var(--text-secondary)">Open an alert link from WhatsApp to view patient details.</p>
+        <button class="btn btn-outline" style="margin-top:12px" onclick="showListView()">&#8592; Back to All Alerts</button>
+      </div>
+    </div>
+
+    <!-- Alert Detail View -->
+    <div id="alertView" style="display:none">
+      <a class="back-btn" onclick="showListView()">&#8592; Back to All Alerts</a>
+      <div class="card portal-alert-card" id="alertCard">
+        <div class="status-banner" id="statusBanner">
+          <span style="font-size:20px">&#128683;</span>
+          <span id="statusText">Waiting for acknowledgement</span>
+        </div>
+
+        <div class="portal-section">
+          <h3>Patient Information</h3>
+          <div class="portal-patient">
+            <div class="portal-info-item"><label>Name</label><span id="patName">--</span></div>
+            <div class="portal-info-item"><label>Age / Gender</label><span id="patAgeGender">--</span></div>
+            <div class="portal-info-item"><label>Phone</label><span id="patPhone">--</span></div>
+            <div class="portal-info-item"><label>Report</label><span id="patReport">--</span></div>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <h3>AI Health Summary</h3>
+          <p style="color:var(--text-secondary);line-height:1.7" id="healthSummary">--</p>
+        </div>
+
+        <div class="portal-section">
+          <h3>Critical Findings</h3>
+          <div id="criticalFindings"></div>
+        </div>
+
+        <div class="portal-section">
+          <h3>All Test Values</h3>
+          <div id="allValues"></div>
+        </div>
+
+        <div class="portal-section">
+          <h3>Suggested Action</h3>
+          <p style="color:var(--warning);font-weight:600" id="suggestedAction">--</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="portal-actions">
+          <button class="btn btn-success" id="acknowledgeBtn" onclick="acknowledgeAlert()">
+            &#10004; Mark as Acknowledged
+          </button>
+          <button class="btn btn-primary" id="callBtn" onclick="callPatient()">
+            &#128222; Call Patient Now
+          </button>
+          <button class="btn btn-outline" id="messageBtn" onclick="toggleMessageBox()">
+            &#128172; Send Message to Patient
+          </button>
+        </div>
+
+        <div class="message-input-area" id="messageArea">
+          <div class="form-group">
+            <textarea class="form-input" id="messageText" placeholder="Type your message to the patient..." rows="3"></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="sendMessage()">Send via WhatsApp</button>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div style="font-size:12px;color:var(--text-muted)">
+          Alert sent: <span id="alertSentTime">--</span> &bull;
+          Status: <span id="alertStatus">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/portal.js"></script>
+</body>
+</html>

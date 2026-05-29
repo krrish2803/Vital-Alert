@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalAlert — Patient Portal</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 20px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; text-align: center; }
+    .stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--accent); }
+    .stat-card .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .report-card { border-left: 4px solid var(--border); margin-bottom: 12px; padding: 16px; background: var(--surface); border-radius: var(--radius); border-left-width: 4px; border-left-style: solid; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .report-card.critical { border-left-color: var(--danger); }
+    .report-card.normal { border-left-color: var(--success); }
+    .report-card.low { border-left-color: var(--warning); }
+    .result-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .result-badge.critical { background: rgba(255,77,77,0.15); color: var(--danger); }
+    .result-badge.normal { background: rgba(0,200,81,0.15); color: var(--success); }
+    .result-badge.low { background: rgba(255,179,71,0.15); color: var(--warning); }
+    .upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 48px 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-area:hover { border-color: var(--accent); background: rgba(0,212,170,0.03); }
+    .alert-banner { padding: 16px; border-radius: var(--radius); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .alert-banner.critical { background: rgba(255,77,77,0.1); border: 1px solid rgba(255,77,77,0.2); }
+    .alert-banner.success { background: rgba(0,200,81,0.1); border: 1px solid rgba(0,200,81,0.2); }
+    .alert-banner.warning { background: rgba(255,179,71,0.1); border: 1px solid rgba(255,179,71,0.2); }
+    .no-doctor-card { padding: 20px; border-radius: var(--radius); background: rgba(255,179,71,0.08); border: 1px solid rgba(255,179,71,0.2); text-align: center; }
+    .no-doctor-card .inline-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; text-align: left; }
+    @media (max-width: 600px) { .no-doctor-card .inline-form { grid-template-columns: 1fr; } }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .search-bar { display: flex; gap: 12px; margin-bottom: 20px; }
+    .search-bar .form-input { flex: 1; }
+    @media (max-width: 768px) { .search-bar { flex-direction: column; } }
+    .download-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
+    .download-item:hover { border-color: rgba(0,212,170,0.2); }
+    .download-icon { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); border-radius: 10px; flex-shrink: 0; }
+    .download-info { flex: 1; min-width: 0; }
+    .download-name { font-size: 14px; font-weight: 600; }
+    .download-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .quick-doctor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .quick-doctor-grid { grid-template-columns: 1fr; } }
+    .doctor-info { display: flex; flex-direction: column; gap: 8px; }
+    .doctor-info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: center; }
+    .doctor-info-item:last-child { border-bottom: none; }
+    .doctor-info-item label { color: var(--text-muted); font-size: 13px; }
+    .doctor-info-item span { font-weight: 500; }
+    .formatted-report { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; line-height: 1.7; color: var(--text-primary); margin-top: 20px; }
+    .formatted-report .fr-line { white-space: pre-wrap; word-break: break-word; }
+    .formatted-report .fr-divider { color: var(--text-muted); letter-spacing: -1px; }
+    .formatted-report .fr-table { display: flex; flex-direction: column; gap: 4px; }
+    .formatted-report .fr-row { display: flex; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .formatted-report .fr-row:last-child { border-bottom: none; }
+    .formatted-report .fr-row.header { color: var(--text-muted); font-weight: 600; border-bottom-color: var(--text-muted); }
+    .formatted-report .fr-cell { flex: 1; }
+    .formatted-report .fr-cell.test { flex: 2; }
+    .formatted-report .fr-cell.value { flex: 1.5; }
+    .formatted-report .fr-cell.status { flex: 1; text-align: right; }
+    .formatted-report .fr-summary { color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="header-left">
+        <div class="header-logo">VitalAlert</div>
+        <span style="color:var(--text-secondary);font-size:14px">Patient Portal</span>
+      </div>
+      <div class="header-right">
+        <span class="header-user" id="headerUser"></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Setup View (first time) -->
+  <div id="setupView" style="display:none">
+    <div class="container" style="padding-top:40px">
+      <div class="card" style="max-width:500px;margin:0 auto">
+        <h2 style="margin-bottom:8px">Welcome!</h2>
+        <p style="color:var(--text-secondary);margin-bottom:24px">Tell us a bit about yourself</p>
+        <form id="patientSetupForm">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" id="patName" required>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input class="form-input" id="patAge" type="number" min="1" max="150" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select class="form-input" id="patGender" required>
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-input" id="patPhone" type="tel" placeholder="+919876543210" required>
+          </div>
+          <div class="login-error" id="setupError"></div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%">Save & Continue</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainView" style="display:none">
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <div class="sidebar-section-title">Navigation</div>
+          <button class="sidebar-link active" data-page="dashboard" onclick="switchPage('dashboard')">
+            <span class="sidebar-icon">&#128202;</span> Dashboard
+          </button>
+          <button class="sidebar-link" data-page="analysis" onclick="switchPage('analysis')">
+            <span class="sidebar-icon">&#128269;</span> Analysis Report
+          </button>
+          <button class="sidebar-link" data-page="downloads" onclick="switchPage('downloads')">
+            <span class="sidebar-icon">&#128229;</span> Downloads Report
+          </button>
+          <button class="sidebar-link" data-page="doctor" onclick="switchPage('doctor')">
+            <span class="sidebar-icon">&#128137;</span> My Doctor
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+
+        <!-- Dashboard Page -->
+        <div class="page active" id="page-dashboard">
+          <div class="page-header">
+            <h1 class="page-title">Dashboard</h1>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:12px">
+            <div>
+              <h2 id="dashPatientName" style="margin-bottom:4px"></h2>
+              <p style="color:var(--text-muted);font-size:13px" id="dashPatientMeta"></p>
+            </div>
+            <div id="dashDoctorBadge" style="font-size:13px;color:var(--text-muted);padding:8px 16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)">
+              &#128137; Doctor: <span id="dashDoctorName">Not assigned</span>
+            </div>
+          </div>
+
+          <div class="stat-cards">
+            <div class="stat-card">
+              <div class="stat-value" id="statTotal">0</div>
+              <div class="stat-label">Total Reports</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:var(--danger)" id="statCritical">0</div>
+              <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" style="color:var(--success)" id="statNormal">0</div>
+              <div class="stat-label">Normal</div>
+            </div>
+          </div>
+
+          <div id="pendingAlertBanner" class="alert-banner warning" style="display:none;margin-top:20px">
+            <span style="font-size:20px">&#9888;&#65039;</span>
+            <div style="flex:1">
+              <strong>Pending Critical Alerts</strong>
+              <p style="font-size:13px;margin-top:4px" id="pendingAlertText"></p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="retryAlerts()">&#128232; Send Alerts Now</button>
+          </div>
+
+          <div style="margin-top:24px">
+            <h3 style="margin-bottom:12px">Recent Reports</h3>
+            <div id="recentReports"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="switchPage('downloads')">View All &#8594;</button>
+          </div>
+        </div>
+
+        <!-- Analysis Report Page -->
+        <div class="page" id="page-analysis">
+          <div class="page-header">
+            <h1 class="page-title">Analysis Report</h1>
+          </div>
+
+          <div id="uploadSection">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+              <div style="font-size:48px;margin-bottom:12px">&#128220;</div>
+              <p style="font-weight:600;margin-bottom:4px">Click to upload your report</p>
+              <p style="font-size:13px;color:var(--text-muted)">PDF, JPG, PNG accepted</p>
+            </div>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleFileSelect(event)">
+            <div id="filePreview" style="display:none;margin-top:16px">
+              <p style="font-size:13px;color:var(--text-secondary)" id="fileName"></p>
+            </div>
+            <div class="form-group" style="margin-top:16px">
+              <label class="form-label">Report Type</label>
+              <select class="form-input" id="reportType">
+                <option value="Blood Test">Blood Test</option>
+                <option value="Urine Test">Urine Test</option>
+                <option value="CT Scan">CT Scan</option>
+                <option value="X-Ray">X-Ray</option>
+                <option value="MRI">MRI</option>
+                <option value="Ultrasound">Ultrasound</option>
+                <option value="Echo">Echo</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeReport()" style="width:100%;margin-top:16px" disabled>
+              &#128269; Analyze Report
+            </button>
+            <div id="uploadStatus" style="margin-top:12px;display:none"></div>
+          </div>
+
+      <div id="analysisResult" style="display:none;margin-top:24px">
+        <div id="formattedReportContainer"></div>
+
+        <div id="noDoctorPrompt" style="display:none">
+          <div class="no-doctor-card">
+            <p style="font-weight:600;margin-bottom:4px">&#9888;&#65039; Critical results detected — no doctor assigned</p>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Add your doctor's WhatsApp number to receive the alert immediately.</p>
+            <div class="inline-form">
+              <div class="form-group">
+                <label class="form-label">Doctor's Name</label>
+                <input class="form-input" id="quickDocName" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Doctor's Phone</label>
+                <input class="form-input" id="quickDocPhone" type="tel" required>
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Doctor's WhatsApp Number</label>
+                <input class="form-input" id="quickDocWhatsApp" type="tel" placeholder="Leave blank to use phone number">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveDoctorAndAlert()" style="margin-top:12px">
+              &#128137; Save Doctor & Send Alert
+            </button>
+            <div id="quickAlertStatus" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="downloadResultBtn" onclick="downloadFormattedReport(currentReportId)" style="display:none">&#128229; Download Report</button>
+          <button class="btn btn-danger" id="sendAlertBtn" onclick="sendAlertToDoctor()">&#128680; Send Alert to Doctor</button>
+          <button class="btn btn-outline" onclick="resetUpload()">&#128259; Upload Another Report</button>
+        </div>
+        <div id="alertResultStatus" style="margin-top:12px;display:none"></div>
+      </div>
+
+        <!-- Downloads Report Page -->
+        <div class="page" id="page-downloads">
+          <div class="page-header">
+            <h1 class="page-title">Downloads Report</h1>
+          </div>
+
+          <div class="search-bar">
+            <input class="form-input" id="downloadSearch" placeholder="Search by report type, severity..." oninput="filterDownloads()">
+            <button class="btn btn-outline" onclick="loadDownloads()">&#128260; Refresh</button>
+          </div>
+
+          <div id="downloadsList">
+            <div class="empty-state">
+              <div class="empty-icon">&#128196;</div>
+              <h3>No reports found</h3>
+              <p>Upload a report in the Analysis Report section to see it here.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Doctor Page -->
+        <div class="page" id="page-doctor">
+          <div class="page-header">
+            <h1 class="page-title">My Doctor</h1>
+          </div>
+
+          <div id="currentDoctorInfo" class="card" style="margin-bottom:20px">
+            <h3 style="margin-bottom:12px">Assigned Doctor</h3>
+            <div id="doctorInfoDisplay">
+              <div class="empty-state" style="padding:32px">
+                <div class="empty-icon">&#128137;</div>
+                <p>No doctor assigned yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-bottom:16px">Add / Update Doctor</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Your reports will be analyzed and if critical results are found, an alert will be sent to this doctor via WhatsApp.</p>
+            <form id="doctorForm">
+              <div class="two-col">
+                <div class="form-group">
+                  <label class="form-label">Doctor's Full Name</label>
+                  <input class="form-input" id="docNameInput" placeholder="e.g. Dr. Sharma" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Doctor's Phone Number</label>
+                  <input class="form-input" id="docPhoneInput" type="tel" placeholder="+919876543210" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Doctor's WhatsApp Number</label>
+                  <input class="form-input" id="docWhatsAppInput" type="tel" placeholder="Same as phone if blank">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Specialization (optional)</label>
+                  <input class="form-input" id="docSpecialization" placeholder="e.g. Cardiologist">
+                </div>
+              </div>
+              <div class="login-error" id="doctorFormError"></div>
+              <button type="submit" class="btn btn-primary" style="margin-top:8px">&#128274; Save Doctor Details</button>
+            </form>
+          </div>
+
+          <div id="pendingAlertSection" class="alert-banner warning" style="display:none;margin-top:20px">
+            <span style="font-size:20px">&#9888;&#65039;</span>
+            <div>
+              <strong>Pending Critical Alerts</strong>
+              <p style="font-size:13px;margin-top:4px">You have critical reports waiting to be sent.</p>
+              <button class="btn btn-primary btn-sm" onclick="retryAlerts()" style="margin-top:8px">&#128232; Send Alerts Now</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/v1';
+
+    function getToken() { return localStorage.getItem('token'); }
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+    async function api(path, opts = {}) {
+      const token = getToken();
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      Object.assign(headers, opts.headers || {});
+      const res = await fetch(`${API}${path}`, { ...opts, headers });
+      if (res.status === 401) { logout(); return null; }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'API error'); }
+      return res.json();
+    }
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    let patientData = null;
+    let allReports = [];
+    let selectedFile = null;
+    let lastReportId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('headerUser').textContent = user.name || 'Patient';
+      await loadPatient();
+    });
+
+    async function loadPatient() {
+      try {
+        const data = await api('/patients/me');
+        if (!data) return;
+        patientData = data.patient;
+        allReports = data.reports || [];
+        document.getElementById('setupView').style.display = 'none';
+        document.getElementById('mainView').style.display = 'block';
+        renderDashboard();
+        renderDoctorPage();
+        loadDownloads();
+      } catch (e) {
+        document.getElementById('setupView').style.display = 'block';
+      }
+    }
+
+    document.getElementById('patientSetupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('setupError');
+      error.style.display = 'none';
+      try {
+        await api('/patients/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('patName').value,
+            age: parseInt(document.getElementById('patAge').value),
+            gender: document.getElementById('patGender').value,
+            phone: document.getElementById('patPhone').value,
+          }),
+        });
+        await loadPatient();
+      } catch (err) {
+        error.textContent = err.message;
+        error.style.display = 'block';
+      }
+    });
+
+    function switchPage(page) {
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const link = document.querySelector(`.sidebar-link[data-page="${page}"]`);
+      if (link) link.classList.add('active');
+      const pg = document.getElementById(`page-${page}`);
+      if (pg) pg.classList.add('active');
+      if (page === 'downloads') loadDownloads();
+    }
+
+    function renderDashboard() {
+      const p = patientData;
+      document.getElementById('dashPatientName').textContent = p.name;
+      document.getElementById('dashPatientMeta').textContent = `Age: ${p.age} / Gender: ${p.gender} / Phone: ${p.phone || '--'}`;
+      document.getElementById('dashDoctorName').textContent = p.doctor_name || 'Not assigned';
+
+      const total = allReports.length;
+      const critical = allReports.filter(r => r.is_critical).length;
+      const normal = allReports.filter(r => !r.is_critical).length;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statCritical').textContent = critical;
+      document.getElementById('statNormal').textContent = normal;
+
+      const recent = allReports.slice(0, 5);
+      const container = document.getElementById('recentReports');
+      if (recent.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128196;</div><p>No reports yet.</p></div>';
+      } else {
+        container.innerHTML = recent.map(r => {
+          const sev = r.severity || 'normal';
+          const date = r.uploaded_at ? new Date(r.uploaded_at).toLocaleString('en-IN') : '--';
+          return `<div class="report-card ${sev}" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div><strong>${r.report_type || 'Report'}</strong> <span class="result-badge ${sev}">${sev.toUpperCase()}</span></div>
+            <span style="font-size:12px;color:var(--text-muted)">${date}</span>
+          </div>`;
+        }).join('');
+      }
+
+      const pendingBanner = document.getElementById('pendingAlertBanner');
+      const hasPending = allReports.some(r => r.is_critical && (r.alert_status === 'no_doctor' || r.alert_status === 'none' || r.alert_status === 'pending'));
+      if (hasPending && p.doctor_name) {
+        const count = allReports.filter(r => r.is_critical && (r.alert_status === 'no_doctor' || r.alert_status === 'none' || r.alert_status === 'pending')).length;
+        document.getElementById('pendingAlertText').textContent = `${count} critical report${count > 1 ? 's' : ''} pending alert.`;
+        pendingBanner.style.display = 'flex';
+      } else {
+        pendingBanner.style.display = 'none';
+      }
+    }
+
+    function renderDoctorPage() {
+      const display = document.getElementById('doctorInfoDisplay');
+      const pendingSection = document.getElementById('pendingAlertSection');
+      const p = patientData;
+
+      if (p && p.doctor_name) {
+        display.innerHTML = `<div class="doctor-info">
+          <div class="doctor-info-item"><label>Name</label><span>${p.doctor_name}</span></div>
+          <div class="doctor-info-item"><label>Phone</label><span>${p.doctor_phone || '--'}</span></div>
+          <div class="doctor-info-item"><label>WhatsApp</label><span>${p.doctor_whatsapp || '--'}</span></div>
+        </div>`;
+        document.getElementById('docNameInput').value = p.doctor_name || '';
+        document.getElementById('docPhoneInput').value = p.doctor_phone || '';
+        document.getElementById('docWhatsAppInput').value = p.doctor_whatsapp || '';
+      } else {
+        display.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-icon">&#128137;</div><p>No doctor assigned yet. Fill the form below to add one.</p></div>';
+      }
+
+      const hasPending = allReports.some(r => r.is_critical && (r.alert_status === 'no_doctor' || r.alert_status === 'none' || r.alert_status === 'pending'));
+      pendingSection.style.display = (hasPending && p && p.doctor_name) ? 'flex' : 'none';
+    }
+
+    function handleFileSelect(e) {
+      selectedFile = e.target.files[0];
+      if (!selectedFile) return;
+      document.getElementById('filePreview').style.display = 'block';
+      document.getElementById('fileName').textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+
+    async function analyzeReport() {
+      if (!selectedFile) return;
+      const btn = document.getElementById('analyzeBtn');
+      const status = document.getElementById('uploadStatus');
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+      status.style.display = 'block';
+      status.innerHTML = '<p style="color:var(--text-secondary)">&#9203; Analyzing your report... <span id="elapsed">0</span>s</p>';
+      let elapsed = 0;
+      const timer = setInterval(() => { elapsed++; document.getElementById('elapsed').textContent = elapsed; }, 1000);
+
+      try {
+        const pid = patientData.id || patientData._id;
+        const form = new FormData();
+        form.append('patient_id', pid);
+        form.append('report_type', document.getElementById('reportType').value);
+        form.append('notes', 'Uploaded via Patient Portal');
+        form.append('files', selectedFile);
+
+        const token = getToken();
+        const res = await fetch(`${API}/reports/upload`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: form,
+        });
+        clearInterval(timer);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+
+        const report = data.report || data;
+        lastReportId = report.id;
+        showResult(report);
+        document.getElementById('uploadSection').style.display = 'none';
+        status.style.display = 'none';
+        btn.textContent = 'Analyze Report';
+        loadPatient();
+      } catch (err) {
+        clearInterval(timer);
+        status.innerHTML = `<p style="color:var(--danger)">&#10060; ${err.message}</p>`;
+        btn.disabled = false;
+        btn.textContent = 'Analyze Report';
+      }
+    }
+
+let currentReportId = null;
+
+    function showResult(report) {
+      document.getElementById('analysisResult').style.display = 'block';
+      currentReportId = report.id;
+      
+      renderFormattedReport(report);
+      
+      const isCritical = report.is_critical;
+      const hasDoctorAssigned = patientData && patientData.doctor_name;
+      const noDoctorPrompt = isCritical && !hasDoctorAssigned && (report.alert_status === 'no_doctor' || !report.alert_sent);
+      document.getElementById('noDoctorPrompt').style.display = noDoctorPrompt ? 'block' : 'none';
+      
+      if (noDoctorPrompt && patientData.doctor_name) {
+        document.getElementById('quickDocName').value = patientData.doctor_name || '';
+        document.getElementById('quickDocPhone').value = patientData.doctor_phone || '';
+        document.getElementById('quickDocWhatsApp').value = patientData.doctor_whatsapp || '';
+      }
+      
+      const dlBtn = document.getElementById('downloadResultBtn');
+      dlBtn.style.display = 'inline-flex';
+      dlBtn.onclick = () => downloadFormattedReport(currentReportId);
+
+      const sendBtn = document.getElementById('sendAlertBtn');
+      sendBtn.style.display = 'inline-flex';
+    }
+
+    function renderFormattedReport(report) {
+      const container = document.getElementById('formattedReportContainer');
+      const date = report.uploaded_at || report.processed_at 
+        ? new Date(report.uploaded_at || report.processed_at).toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        }) : '--';
+      
+      const values = report.extracted_values || [];
+      const isCritical = report.is_critical;
+      const confidence = report.confidence_score || 0;
+      const severity = report.severity || 'normal';
+      
+      let html = `<div class="formatted-report">`;
+      
+      // Header
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-line" style="font-size:18px;font-weight:700">✅ Analysis Complete</div>`;
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      // Patient info
+      html += `<div class="fr-line">Patient: ${patientData.name || 'Unknown'}</div>`;
+      html += `<div class="fr-line">Age: ${patientData.age || '--'} | ${patientData.gender || '--'}</div>`;
+      html += `<div class="fr-line">Phone: ${patientData.phone || '--'}</div>`;
+      html += `<div class="fr-line">Report Type: ${report.report_type || '--'}</div>`;
+      html += `<div class="fr-line">Analyzed at: ${date}</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      // Health Summary
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-line" style="font-size:16px;font-weight:600">🤖 AI Health Summary</div>`;
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      const summary = report.health_summary || 'No summary available';
+      html += `<div class="fr-summary">${summary.replace(/\n/g, '<br>')}</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      // Test Results
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-line" style="font-size:16px;font-weight:600">📊 Test Results</div>`;
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      if (values.length > 0) {
+        html += `<div class="fr-table">`;
+        html += `<div class="fr-row fr-header">
+          <div class="fr-cell fr-test">Test</div>
+          <div class="fr-cell fr-value">Value</div>
+          <div class="fr-cell fr-status">Status</div>
+        </div>`;
+        html += `<div class="fr-divider">─────────────────────────────────────────────</div>`;
+        
+        values.forEach(v => {
+          const status = v.status || 'unknown';
+          const statusIcon = status.includes('critical') ? '🔴' : status === 'normal' ? '✅' : '⚠️';
+          const displayValue = typeof v.value === 'number' ? `${v.value}${v.unit || ''}` : v.value || '--';
+          html += `<div class="fr-row">
+            <div class="fr-cell fr-test">${v.test_name || 'Test'}</div>
+            <div class="fr-cell fr-value">${displayValue}</div>
+            <div class="fr-cell fr-status">${statusIcon} ${status.toUpperCase()}</div>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<div class="fr-text" style="color:var(--text-muted)">No values extracted</div>`;
+      }
+      html += `<div class="fr-space"></div>`;
+      
+      // Severity + Confidence
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      const severityIcon = isCritical ? '⚠️' : '✅';
+      html += `<div class="fr-line" style="font-weight:600">${severityIcon} Severity: ${severity.toUpperCase()}</div>`;
+      html += `<div class="fr-line" style="font-weight:600">🎯 AI Confidence: ${Math.round(confidence * 100)}%</div>`;
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      // Suggested Action
+      html += `<div class="fr-line" style="font-weight:500">Suggested Action:</div>`;
+      html += `<div class="fr-text">${report.suggested_action || 'No specific action suggested.'}</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      // Alert Status
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-line" style="font-size:16px;font-weight:600">🚨 Alert Status</div>`;
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `<div class="fr-space"></div>`;
+      
+      if (report.alert_sent) {
+        html += `<div class="fr-line" style="color:var(--success)">✅ Doctor Alerted on WhatsApp</div>`;
+        html += `<div class="fr-line">${report.alert_sent_to || 'Doctor'} notified at ${report.alert_sent_at || date}</div>`;
+      } else if (isCritical) {
+        if (report.alert_status === 'no_doctor' || !hasDoctorAssigned) {
+          html += `<div class="fr-line" style="color:var(--warning)">⚠️ No doctor assigned — alert not sent</div>`;
+        } else if (report.requires_human_review) {
+          html += `<div class="fr-line" style="color:var(--warning)">⚠️ Flagged for manual review by staff</div>`;
+        }
+      } else {
+        html += `<div class="fr-line" style="color:var(--success)">✅ No critical issues found</div>`;
+      }
+      html += `<div class="fr-space"></div>`;
+      
+      html += `<div class="fr-line">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>`;
+      html += `</div>`; // end formatted-report
+      
+      container.innerHTML = html;
+    }
+
+    async function downloadFormattedReport(reportId) {
+      try {
+        const res = await api(`/reports/${reportId}`);
+        if (!res) return;
+        const report = res.report;
+        const patient = res.patient || {};
+
+        const now = new Date().toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        });
+
+        const isCritical = report.is_critical;
+        const severityText = report.severity || (isCritical ? 'CRITICAL' : 'NORMAL');
+        const confidence = report.confidence_score || 0;
+
+        let tableRows = '';
+        if (report.extracted_values && report.extracted_values.length > 0) {
+          report.extracted_values.forEach(v => {
+            const status = v.status || 'unknown';
+            const color = status.includes('critical') ? '#dc3545' : status === 'normal' ? '#28a745' : '#ffc107';
+            const icon = status.includes('critical') ? '🔴' : status === 'normal' ? '✅' : '⚠️';
+            const displayValue = typeof v.value === 'number' ? `${v.value}${v.unit || ''}` : v.value || '--';
+            const range = v.range || '--';
+            tableRows += `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${v.test_name || 'Test'}</td>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;font-weight:600">${displayValue}</td>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${color}">${icon} ${status.toUpperCase()}</td></tr>`;
+          });
+        } else {
+          tableRows = '<tr><td colspan="3" style="padding:12px;color:#888">No values extracted</td></tr>';
+        }
+
+        const criticalIcon = isCritical ? '🔴' : '✅';
+        const alertStatus = report.alert_sent
+          ? `✅ Doctor Alerted on WhatsApp (${report.alert_sent_to || 'Doctor'} at ${report.alert_sent_at || now})`
+          : isCritical ? '⚠️ Pending — alert not yet sent' : '✅ No critical issues';
+
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>VitalAlert Report</title>
+<style>
+  body { font-family: 'Calibri', 'Arial', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #222; }
+  h1 { color: #00a67e; font-size: 24px; border-bottom: 3px solid #00a67e; padding-bottom: 10px; }
+  h2 { color: #333; font-size: 18px; margin-top: 30px; }
+  .section { margin: 20px 0; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8f9fa; padding: 16px; border-radius: 6px; }
+  .info-item label { color: #666; font-size: 12px; display: block; }
+  .info-item span { font-size: 15px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th { background: #00a67e; color: white; padding: 8px 12px; text-align: left; }
+  td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+  .severity { font-size: 18px; font-weight: 700; color: ${isCritical ? '#dc3545' : '#28a745'}; }
+  .alert-box { background: ${isCritical ? '#fff3cd' : '#d4edda'}; border: 1px solid ${isCritical ? '#ffc107' : '#c3e6cb'}; border-radius: 6px; padding: 14px; margin: 20px 0; }
+  .summary { background: #f8f9fa; padding: 16px; border-radius: 6px; line-height: 1.7; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 2px solid #eee; font-size: 12px; color: #888; text-align: center; }
+</style></head>
+<body>
+  <h1>VitalAlert — Analysis Report</h1>
+  <div class="section">
+    <div class="info-grid">
+      <div class="info-item"><label>Patient</label><span>${patient.name || 'N/A'}</span></div>
+      <div class="info-item"><label>Age / Gender</label><span>${patient.age || '--'} / ${patient.gender || '--'}</span></div>
+      <div class="info-item"><label>Phone</label><span>${patient.phone || '--'}</span></div>
+      <div class="info-item"><label>Report Type</label><span>${report.report_type || 'N/A'}</span></div>
+      <div class="info-item"><label>Analyzed At</label><span>${now}</span></div>
+    </div>
+  </div>
+
+  <h2>AI Health Summary</h2>
+  <div class="summary">${(report.health_summary || 'No summary available.').replace(/\\n/g, '<br>')}</div>
+
+  <h2>Test Results</h2>
+  <table>
+    <tr><th>Test</th><th>Value</th><th>Status</th></tr>
+    ${tableRows}
+  </table>
+
+  <h2>Assessment</h2>
+  <p class="severity">${criticalIcon} Severity: ${severityText}</p>
+  <p><strong>AI Confidence:</strong> ${Math.round(confidence * 100)}%</p>
+  <p><strong>Suggested Action:</strong> ${report.suggested_action || 'No specific action suggested.'}</p>
+
+  <h2>Alert Status</h2>
+  <div class="alert-box">${alertStatus}</div>
+
+  <div class="footer">
+    <p>Generated by VitalAlert &bull; ${now}</p>
+    <p>VitalAlert — AI-Powered Diagnostic Alert System</p>
+  </div>
+</body></html>`;
+
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `VitalAlert_Report_${reportId}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Error downloading report: ' + err.message);
+      }
+    }
+
+    async function saveDoctorAndAlert() {
+      const btn = event.target;
+      const status = document.getElementById('quickAlertStatus');
+      btn.disabled = true;
+      btn.textContent = 'Saving & Sending...';
+      status.innerHTML = '';
+      try {
+        const w = document.getElementById('quickDocWhatsApp').value || document.getElementById('quickDocPhone').value;
+        await api('/patients/doctor', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doctor_name: document.getElementById('quickDocName').value,
+            doctor_phone: document.getElementById('quickDocPhone').value,
+            doctor_whatsapp: w,
+          }),
+        });
+        const retry = await api('/patients/retry-alerts', { method: 'POST' });
+        if (retry && retry.sent > 0) {
+          status.innerHTML = '<p style="color:var(--success);font-weight:500">&#9989; Alert sent to your doctor via WhatsApp!</p>';
+        } else {
+          status.innerHTML = '<p style="color:var(--text-muted)">Doctor saved. No pending alerts.</p>';
+        }
+        document.getElementById('noDoctorPrompt').style.display = 'none';
+        document.getElementById('resultMessage').textContent = 'Alert sent to ' + document.getElementById('quickDocName').value;
+        await loadPatient();
+      } catch (err) {
+        status.innerHTML = `<p style="color:var(--danger)">&#10060; ${err.message}</p>`;
+      }
+      btn.disabled = false;
+      btn.textContent = 'Save Doctor & Send Alert';
+    }
+
+    async function sendAlertToDoctor() {
+      const btn = document.getElementById('sendAlertBtn');
+      const statusDiv = document.getElementById('alertResultStatus');
+      statusDiv.style.display = 'block';
+
+      if (!currentReportId) {
+        statusDiv.innerHTML = '<p style="color:var(--warning)">&#9888; No report to send. Please analyze a report first.</p>';
+        return;
+      }
+
+      const hasDoctor = patientData && patientData.doctor_whatsapp;
+      if (!hasDoctor) {
+        statusDiv.innerHTML = '<p style="color:var(--warning)">&#9888; No doctor assigned. Go to <strong>My Doctor</strong> page and add your doctor\'s details first.</p>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending Alert...';
+      statusDiv.innerHTML = '<p style="color:var(--text-secondary)">&#9203; Sending alert to your doctor via WhatsApp...</p>';
+      try {
+        const res = await api('/alerts/send-patient-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ report_id: currentReportId }),
+        });
+        if (res && res.sent) {
+          statusDiv.innerHTML = '<p style="color:var(--success);font-weight:500">&#9989; Alert sent to Dr. ' + (res.doctor_name || 'your doctor') + ' via WhatsApp!</p>';
+          btn.style.display = 'none';
+          await loadPatient();
+        } else {
+          const errMsg = res && res.message ? res.message : 'Twilio WhatsApp send failed. Check your Twilio credentials.';
+          statusDiv.innerHTML = '<p style="color:var(--danger)">&#10060; ' + errMsg + '</p>';
+        }
+      } catch (err) {
+        statusDiv.innerHTML = '<p style="color:var(--danger)">&#10060; ' + err.message + '</p>';
+      }
+      btn.disabled = false;
+      btn.textContent = '\u{1F6A8} Send Alert to Doctor';
+    }
+
+    function resetUpload() {
+      document.getElementById('uploadSection').style.display = 'block';
+      document.getElementById('analysisResult').style.display = 'none';
+      document.getElementById('filePreview').style.display = 'none';
+      document.getElementById('analyzeBtn').disabled = true;
+      document.getElementById('noDoctorPrompt').style.display = 'none';
+      document.getElementById('sendAlertBtn').style.display = 'none';
+      document.getElementById('alertResultStatus').style.display = 'none';
+      selectedFile = null;
+      document.getElementById('fileInput').value = '';
+    }
+
+    function loadDownloads() {
+      const container = document.getElementById('downloadsList');
+      const search = (document.getElementById('downloadSearch')?.value || '').toLowerCase();
+      let filtered = allReports;
+      if (search) {
+        filtered = allReports.filter(r =>
+          (r.report_type || '').toLowerCase().includes(search) ||
+          (r.severity || '').toLowerCase().includes(search)
+        );
+      }
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128196;</div><h3>No reports found</h3><p>Upload a report in the Analysis Report section to see it here.</p></div>';
+        return;
+      }
+      container.innerHTML = filtered.map(r => {
+        const sev = r.severity || 'normal';
+        const date = r.uploaded_at ? new Date(r.uploaded_at).toLocaleString('en-IN') : '--';
+        const fileCount = (r.files && r.files.length) || 0;
+        return `<div class="download-item">
+          <div class="download-icon">&#128196;</div>
+          <div class="download-info">
+            <div class="download-name">${r.report_type || 'Report'} <span class="result-badge ${sev}">${sev.toUpperCase()}</span></div>
+            <div class="download-meta">${date} ${r.is_critical ? '&#9888;&#65039;' : ''} ${r.alert_sent ? '&#9989; Alert sent' : ''}</div>
+          </div>
+          ${fileCount > 0 ? `<button class="btn btn-outline btn-sm" onclick="downloadFormattedReportFromList('${r.id}')">&#128229; Download Report</button>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function filterDownloads() { loadDownloads(); }
+
+    async function downloadFormattedReportFromList(reportId) {
+      const data = await api(`/reports/${reportId}`, { method: 'GET' });
+      if (!data || !data.report) {
+        alert('Failed to fetch report data');
+        return;
+      }
+
+      const report = data.report;
+      const patient = data.patient || {};
+      const now = new Date().toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+
+      const isCritical = report.is_critical;
+      const severityText = report.severity || (isCritical ? 'CRITICAL' : 'NORMAL');
+      const confidence = report.confidence_score || 0;
+
+      let tableRows = '';
+      if (report.extracted_values && report.extracted_values.length > 0) {
+        report.extracted_values.forEach(v => {
+          const status = v.status || 'unknown';
+          const color = status.includes('critical') ? '#dc3545' : status === 'normal' ? '#28a745' : '#ffc107';
+          const icon = status.includes('critical') ? '🔴' : status === 'normal' ? '✅' : '⚠️';
+          const displayValue = typeof v.value === 'number' ? `${v.value}${v.unit || ''}` : v.value || '--';
+          tableRows += `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${v.test_name || 'Test'}</td>
+            <td style="padding:6px 12px;border-bottom:1px solid #eee;font-weight:600">${displayValue}</td>
+            <td style="padding:6px 12px;border-bottom:1px solid #eee;color:${color}">${icon} ${status.toUpperCase()}</td></tr>`;
+        });
+      } else {
+        tableRows = '<tr><td colspan="3" style="padding:12px;color:#888">No values extracted</td></tr>';
+      }
+
+      const alertStatus = report.alert_sent
+        ? `✅ Doctor Alerted on WhatsApp (${report.alert_sent_to || 'Doctor'} at ${report.alert_sent_at || now})`
+        : isCritical ? '⚠️ Pending — alert not yet sent' : '✅ No critical issues';
+
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>VitalAlert Report</title>
+<style>
+  body { font-family: 'Calibri', 'Arial', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #222; }
+  h1 { color: #00a67e; font-size: 24px; border-bottom: 3px solid #00a67e; padding-bottom: 10px; }
+  h2 { color: #333; font-size: 18px; margin-top: 30px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8f9fa; padding: 16px; border-radius: 6px; }
+  .info-item label { color: #666; font-size: 12px; display: block; }
+  .info-item span { font-size: 15px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th { background: #00a67e; color: white; padding: 8px 12px; text-align: left; }
+  td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+  .severity { font-size: 18px; font-weight: 700; color: ${isCritical ? '#dc3545' : '#28a745'}; }
+  .alert-box { background: ${isCritical ? '#fff3cd' : '#d4edda'}; border: 1px solid ${isCritical ? '#ffc107' : '#c3e6cb'}; border-radius: 6px; padding: 14px; margin: 20px 0; }
+  .summary { background: #f8f9fa; padding: 16px; border-radius: 6px; line-height: 1.7; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 2px solid #eee; font-size: 12px; color: #888; text-align: center; }
+</style></head>
+<body>
+  <h1>VitalAlert — Analysis Report</h1>
+  <div class="info-grid">
+    <div class="info-item"><label>Patient</label><span>${patient.name || 'N/A'}</span></div>
+    <div class="info-item"><label>Age / Gender</label><span>${patient.age || '--'} / ${patient.gender || '--'}</span></div>
+    <div class="info-item"><label>Phone</label><span>${patient.phone || '--'}</span></div>
+    <div class="info-item"><label>Report Type</label><span>${report.report_type || 'N/A'}</span></div>
+    <div class="info-item"><label>Analyzed At</label><span>${now}</span></div>
+  </div>
+
+  <h2>AI Health Summary</h2>
+  <div class="summary">${(report.health_summary || 'No summary available.').replace(/\\n/g, '<br>')}</div>
+
+  <h2>Test Results</h2>
+  <table>
+    <tr><th>Test</th><th>Value</th><th>Status</th></tr>
+    ${tableRows}
+  </table>
+
+  <h2>Assessment</h2>
+  <p class="severity">${isCritical ? '🔴' : '✅'} Severity: ${severityText}</p>
+  <p><strong>AI Confidence:</strong> ${Math.round(confidence * 100)}%</p>
+  <p><strong>Suggested Action:</strong> ${report.suggested_action || 'No specific action suggested.'}</p>
+
+  <h2>Alert Status</h2>
+  <div class="alert-box">${alertStatus}</div>
+
+  <div class="footer">
+    <p>Generated by VitalAlert &bull; ${now}</p>
+    <p>VitalAlert — AI-Powered Diagnostic Alert System</p>
+  </div>
+</body></html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VitalAlert_Report_${reportId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadReport(reportId, fileIndex) {
+      const token = getToken();
+      window.open(`${API}/reports/${reportId}/download/${fileIndex}?token=${token}`, '_blank');
+    }
+
+    async function retryAlerts() {
+      try {
+        const res = await api('/patients/retry-alerts', { method: 'POST' });
+        if (res && res.sent > 0) {
+          alert('Alert sent to your doctor via WhatsApp!');
+        } else {
+          alert('No pending alerts to send.');
+        }
+        await loadPatient();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    document.getElementById('doctorForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('doctorFormError');
+      error.style.display = 'none';
+      try {
+        const w = document.getElementById('docWhatsAppInput').value || document.getElementById('docPhoneInput').value;
+        await api('/patients/doctor', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doctor_name: document.getElementById('docNameInput').value,
+            doctor_phone: document.getElementById('docPhoneInput').value,
+            doctor_whatsapp: w,
+          }),
+        });
+        await loadPatient();
+        document.querySelector('#page-doctor .page-title').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        error.textContent = err.message;
+        error.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
